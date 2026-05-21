@@ -16,7 +16,7 @@ const port = process.env.PORT || 8000
 
 
 
-const uri = "mongodb+srv://studyroom:e1hJ58P8mxKx7BJk@cluster0.olarykh.mongodb.net/?appName=Cluster0";
+const uri = process.env.MONGODB_URI;
 
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
 const client = new MongoClient(uri, {
@@ -27,6 +27,23 @@ const client = new MongoClient(uri, {
   }
 });
 
+
+
+const logger = (req, res, next) => {
+  console.log(`${req.method} | ${req.url}`);
+  next();
+};
+
+const verifyToken = async (req , res , next) =>{
+
+  const {authorization} = req.headers
+  console.log(req.headers)
+
+  next()
+
+}
+
+
 async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
@@ -35,19 +52,21 @@ async function run() {
     // await client.db("admin").command({ ping: 1 });
     const db = client.db('studyroom')
     const roomsCollection = db.collection("rooms")
+
+
+
     app.get("/rooms",async(req,res) => {
         const cursor = roomsCollection.find()
         const result = await cursor.toArray()
         // console.log(result)
         res.send(result)
     })
-    app.get("/rooms/:roomsId",async(req,res) => {
-        const {roomsId} = req.params;
-        const query = {_id:new ObjectId(roomsId)}
-        const result = await roomsCollection.findOne(query)
-        res.send(result)
-         
-    })
+    app.get("/rooms/:roomsId", logger,verifyToken, async (req, res) => {
+  const { roomsId } = req.params;
+  const query = { _id: new ObjectId(roomsId) };
+  const result = await roomsCollection.findOne(query);
+  res.send(result);
+});
 
     app.get("/featured" , async(req,res)=>{
       const cursor = roomsCollection.find().limit(3)
@@ -55,15 +74,6 @@ async function run() {
         // console.log(result)
         res.send(result)
     })
-
-
-
-
-
-
-
-
-
     console.log("Pinged your deployment. You successfully connected to MongoDB!");
   } finally {
     // Ensures that the client will close when you finish/error
