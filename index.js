@@ -8,7 +8,23 @@ dotenv.config()
 
 const app = express()
 app.use(express.json())
-app.use(cors())
+const allowedOrigins = [
+  'http://localhost:3000',
+];
+
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error('Not allowed by CORS'));
+      }
+    },
+    credentials: true,
+  })
+);
+
 
 const port = process.env.PORT || 8000
 const uri = process.env.MONGODB_URI;
@@ -56,6 +72,13 @@ async function run() {
     const db = client.db('studyroom')
     const roomsCollection = db.collection("rooms")
     const bookingCollection = db.collection("booking")
+
+
+    app.post('/rooms', verifyToken , async (req , res) => {
+      const data = req.body
+      const result = await roomsCollection.insertOne(data)
+      res.send(result)
+    })
 
     // Rooms routes
     app.get("/rooms", async (req, res) => {
@@ -112,12 +135,41 @@ async function run() {
       res.send(result);
     });
 
+    app.patch("/rooms/:id" , async (req,res) =>{
+      const {id} = req.params
+      const updatedData = req.body
+      console.log(updatedData)
+
+
+      const result = await roomsCollection.updateOne(
+        {_id: new ObjectId(id)},
+        {$set:updatedData}
+        
+      )
+      res.json(result)
+    })
+
     // Cancel booking route
     app.delete('/booking/:bookingId', async (req, res) =>{
       const {bookingId} = req.params
       const result = await bookingCollection.deleteOne({_id: new ObjectId(bookingId)})
+
+      
+      
       res.json(result)
     });
+
+    
+    app.delete('/rooms/:roomsId', async (req, res) => {
+  const { roomsId } = req.params;
+  const result = await roomsCollection.deleteOne({ _id: new ObjectId(roomsId) });
+  
+  if (result.deletedCount === 0) {
+    return res.status(404).json({ message: "Room not found" });
+  }
+  
+  res.json(result);
+});
 
     console.log("Pinged your deployment. You successfully connected to MongoDB!");
   } finally {
