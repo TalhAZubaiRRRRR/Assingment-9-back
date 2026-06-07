@@ -10,6 +10,7 @@ const app = express()
 app.use(express.json())
 const allowedOrigins = [
   'http://localhost:3000',
+  'studyroom-server.vercel.app'
 ];
 
 app.use(
@@ -55,7 +56,7 @@ const verifyToken = async (req , res , next) =>{
 
   try {
     const JWKS = createRemoteJWKSet(
-      new URL('http://localhost:3000/api/auth/jwks')
+      (new URL(`${process.env.CLIENT_URL}/api/auth/jwks`))
     )
     const { payload } = await jwtVerify(token, JWKS)
     req.user= payload
